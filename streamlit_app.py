@@ -37,11 +37,13 @@ st.title("韭菜計算機 :sunglasses:")
 st.subheader("手續費0.1425% 證交稅0.3% 如果當沖證交稅0.15%", divider=True)
 
 buy_stock_price = st.number_input(
-    "買入價格", value=100, placeholder="100..."
+    "買入價格", value=100.00, placeholder="100.00...",
+    format="%.2f", step=0.01,
 )
 
 sell_stock_price = st.number_input(
-    "賣出價格", value=120, placeholder="120..."
+    "賣出價格", value=120.00, placeholder="120.00...",
+    format="%.2f", step=0.01,
 )
 
 num = st.number_input(
@@ -49,7 +51,8 @@ num = st.number_input(
 )
 
 handling = st.number_input(
-    "券商折數", value=2.5, placeholder="2.5...(折)"
+    "券商折數", value=2.50, placeholder="2.50...(折)",
+    format="%.2f", step=0.01,
 )
 if handling:
     Handling_Fee = handling / 10 * 0.1425 / 100
