@@ -4,13 +4,13 @@ import streamlit as st
 
 st.set_page_config(page_title="韭菜計算機", page_icon="🌱", layout="centered")
 
-# 買賣差獲利價錢
-#
-# 如果當沖證交稅0.15%
-
+# 買賣差獲利價錢 (費率預設為台股法定值, 可在「進階設定」自訂)
+# 手續費 0.1425% / 證交稅 0.3% / 當沖證交稅減半 0.15%
+# 以下三個費率變數會在主流程依使用者輸入重新計算
 Handling_Fee = 2.5 / 10 * 0.1425 / 100
 Certificate_Tax = 0.3 / 100               # 非當沖
 day_trade_Certificate_Tax = 0.3 / 2 / 100 # 當沖
+
 
 def calc_buy(price_per, shares, rate):
     """買入: 回傳成交金額、手續費、總成本 (純計算, 不負責畫面)"""
@@ -74,8 +74,6 @@ handling = st.number_input(
     "券商折數", value=qp_get("handling", 2.50, float), placeholder="2.50...(折)",
     format="%.2f", step=0.01,
 )
-if handling:
-    Handling_Fee = handling / 10 * 0.1425 / 100
 
 mode_default = qp_get("mode", "現股", str)
 if mode_default not in ("現股", "當沖"):
@@ -90,6 +88,24 @@ st.badge(
     color="orange" if IS_DAY_TRADE else "blue",
 )
 
+# 進階設定: 自訂費率 (預設為台股法定費率); expander type="compact" 為較精簡樣式
+with st.expander("進階設定（費率）", icon="⚙️", type="compact"):
+    fee_rate_pct = st.number_input(
+        "券商手續費率 (%)", value=qp_get("fee_rate", 0.1425, float),
+        min_value=0.0, step=0.0001, format="%.4f",
+        help="台股法定上限 0.1425%，實際再乘上券商折數",
+    )
+    tax_rate_pct = st.number_input(
+        "證交稅率 (%)", value=qp_get("tax_rate", 0.3, float),
+        min_value=0.0, step=0.01, format="%.2f",
+        help="現股 0.3%，當沖自動減半",
+    )
+
+# 由折數與費率算出實際費率 (當沖證交稅減半); 覆寫前面的預設值
+Handling_Fee = (handling / 10 if handling else 1) * fee_rate_pct / 100
+Certificate_Tax = tax_rate_pct / 100
+day_trade_Certificate_Tax = tax_rate_pct / 2 / 100
+
 # 把目前輸入同步到網址, 算完可直接複製連結分享
 st.query_params.update(
     {
@@ -99,6 +115,8 @@ st.query_params.update(
         "unit": unit,
         "handling": str(handling),
         "mode": trade_mode,
+        "fee_rate": str(fee_rate_pct),
+        "tax_rate": str(tax_rate_pct),
     }
 )
 
