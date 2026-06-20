@@ -151,11 +151,11 @@ if st.button("開始計算", type="primary"):
         chart_data=curve["profit"], chart_type="line",
     )
 
-    st.badge(
-        f"獲利 ${profit:,}" if profit >= 0 else f"虧損 ${profit:,}",
-        icon="🟢" if profit >= 0 else "🔴",
-        color="green" if profit >= 0 else "red",
-    )
+    # 結果橫幅: 用帶 title 的 alert (1.57) 醒目呈現賺賠, 標題放金額、內文放報酬率
+    if profit >= 0:
+        st.success(f"報酬率 {profit_rate:+.2%}", icon="🟢", title=f"獲利 {money(profit)}")
+    else:
+        st.error(f"報酬率 {profit_rate:+.2%}", icon="🔴", title=f"虧損 {money(profit)}")
 
     # 費用明細表 (st.table 在 1.55 起支援 hide_index)
     # 費用一律顯示正數金額; 只有「淨損益」會隨虧損顯示負號
