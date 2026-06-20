@@ -59,7 +59,15 @@ handling = st.number_input(
 if handling:
     Handling_Fee = handling / 10 * 0.1425 / 100
 
-IS_DAY_TRADE = st.checkbox("是否當沖")
+trade_mode = st.segmented_control(
+    "交易類別", ["現股", "當沖"], default="現股", required=True,
+)
+IS_DAY_TRADE = trade_mode == "當沖"
+st.badge(
+    "當沖 · 證交稅減半" if IS_DAY_TRADE else "現股 · 非當沖",
+    icon="⚡" if IS_DAY_TRADE else "📈",
+    color="orange" if IS_DAY_TRADE else "blue",
+)
 
 if st.button("開始計算", type="primary"):
     stock_num = num * 1000
