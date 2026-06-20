@@ -1,0 +1,42 @@
+# 一個 compose 檔搞定兩種情境, 用 profiles 切換是否啟用 HTTPS。
+#
+#   開發 (HTTP, 直接連 8501):
+#     docker compose up -d --build
+#     # 瀏覽器開 http://localhost:8501
+#
+#   正式 / HTTPS (前面加 Caddy 反向代理, 自動處理憑證):
+#     正式環境 (有網域, DNS 已指到本機):
+#       DOMAIN=your-domain.com docker compose --profile https up -d --build
+#     本機測試 (預設 localhost, Caddy 用自簽憑證):
+#       docker compose --profile https up -d --build
+#       # 瀏覽器開 https://localhost (自簽憑證會跳安全警告, 屬正常)
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8501:8501" # 開發時直接連 http://localhost:8501, 只開放本機
+    # 開發時掛載原始碼, 改 code 不用重 build (正式部署可移除這段)
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+  # 只有加上 --profile https 才會啟動; 平常 docker compose up 不會動到它
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    ports:
+      - "80:80" # HTTP -> Caddy 會自動轉向 HTTPS
+      - "443:443" # 對外只走 Caddy
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # 保存憑證, 避免每次重啟都重新申請 (會撞 Let's Encrypt 限制)
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

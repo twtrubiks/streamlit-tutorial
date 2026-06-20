@@ -1,0 +1,25 @@
+# 不要把這些東西放進 image, 縮小體積也避免快取失效
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+Caddyfile
+README.md
+
+# 環境變數 (docker compose 在 host 端讀取, 不需放進 image)
+.env
+.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.python-version
+
+# 編輯器 / 系統
+.vscode/
+.idea/
+.DS_Store
