@@ -1,3 +1,4 @@
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -73,11 +74,30 @@ if st.button("開始計算", type="primary"):
     profit = sell["net"] - buy["total"]
     profit_rate = profit / buy["total"] if buy["total"] else 0
 
-    # 結果卡片: 三欄 metric, 獲利欄用 delta 自動紅綠配色
+    # 損益兩平賣價 (近似值, 忽略整數進位): 賣到這個價格才回本
+    tax_rate = day_trade_Certificate_Tax if IS_DAY_TRADE else Certificate_Tax
+    break_even = buy["total"] / (shares * (1 - Handling_Fee - tax_rate)) if shares else 0
+
+    # 掃描賣價算出「賣價 -> 獲利」曲線; 範圍涵蓋 買價/賣價/兩平點, 三者都會在圖內
+    refs = [buy_stock_price, sell_stock_price, break_even]
+    lo, hi = min(refs) * 0.9, max(refs) * 1.1
+    if hi <= lo:
+        hi = lo + 1
+    prices = [round(lo + (hi - lo) / 40 * i, 2) for i in range(41)]
+    curve = pd.DataFrame({"price": prices})
+    curve["profit"] = [
+        calc_sell(p, shares, Handling_Fee, IS_DAY_TRADE)["net"] - buy["total"]
+        for p in prices
+    ]
+
+    # 結果卡片: 三欄 metric, 獲利欄用 delta 自動紅綠配色 + sparkline 走勢
     c1, c2, c3 = st.columns(3)
     c1.metric("買入總成本", f"${buy['total']:,}", border=True)
     c2.metric("賣出淨收", f"${sell['net']:,}", border=True)
-    c3.metric("獲利", f"${profit:,}", delta=f"{profit_rate:.2%}", border=True)
+    c3.metric(
+        "獲利", f"${profit:,}", delta=f"{profit_rate:.2%}", border=True,
+        chart_data=curve["profit"], chart_type="line",
+    )
 
     st.badge(
         f"獲利 ${profit:,}" if profit >= 0 else f"虧損 ${profit:,}",
@@ -98,3 +118,56 @@ if st.button("開始計算", type="primary"):
         ]
     )
     st.table(breakdown, hide_index=True)
+
+    st.caption(f"📉 損益兩平賣價約 ${break_even:,.2f}（賣到這個價格才不賠錢）")
+
+    # ----- 損益視覺化 (Altair): 賺/賠上色 + Y=0 基準線 + 兩平點 + 你的賣價 -----
+    # (1)+(4) 賺錢區綠、賠錢區紅 (以 0 為基準的面積圖, 線寬 2)
+    area = (
+        alt.Chart(curve)
+        .transform_calculate(status="datum.profit >= 0 ? '獲利' : '虧損'")
+        .mark_area(opacity=0.2, line={"strokeWidth": 2})
+        .encode(
+            x=alt.X("price:Q", title="賣出價格", scale=alt.Scale(zero=False)),
+            y=alt.Y("profit:Q", title="獲利"),
+            color=alt.Color(
+                "status:N",
+                scale=alt.Scale(domain=["獲利", "虧損"], range=["#16a34a", "#dc2626"]),
+                legend=None,
+            ),
+        )
+    )
+
+    # (1) Y=0 紅色虛線: 賺賠分界
+    zero_line = (
+        alt.Chart(pd.DataFrame({"y": [0]}))
+        .mark_rule(color="#dc2626", strokeDash=[6, 4], strokeWidth=1.5)
+        .encode(y="y:Q")
+    )
+
+    # (2) 損益兩平點 + 標籤
+    be = pd.DataFrame(
+        {"price": [round(break_even, 2)], "profit": [0], "label": [f"兩平 ${break_even:,.2f}"]}
+    )
+    be_point = alt.Chart(be).mark_point(color="#dc2626", size=90, filled=True).encode(
+        x="price:Q", y="profit:Q"
+    )
+    be_text = alt.Chart(be).mark_text(dy=-12, color="#dc2626", fontWeight="bold").encode(
+        x="price:Q", y="profit:Q", text="label:N"
+    )
+
+    # (3) 你實際輸入的賣價那一點 + 標籤
+    you = pd.DataFrame(
+        {"price": [sell_stock_price], "profit": [profit], "label": [f"你的賣價 ${sell_stock_price:,.2f}"]}
+    )
+    you_point = alt.Chart(you).mark_point(
+        color="#2563eb", size=120, filled=True, shape="diamond"
+    ).encode(x="price:Q", y="profit:Q")
+    you_text = alt.Chart(you).mark_text(dy=-14, color="#2563eb", fontWeight="bold").encode(
+        x="price:Q", y="profit:Q", text="label:N"
+    )
+
+    chart = (area + zero_line + be_point + be_text + you_point + you_text).properties(
+        height=320
+    )
+    st.altair_chart(chart, width="stretch")
