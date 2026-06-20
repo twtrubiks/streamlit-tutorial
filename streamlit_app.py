@@ -54,9 +54,21 @@ sell_stock_price = st.number_input(
     format="%.2f", step=0.01,
 )
 
-num = st.number_input(
-    "張數", value=qp_get("num", 1, int), placeholder="1..."
+# 交易單位: 張 (1張=1000股) 或 股 (零股)
+unit_default = qp_get("unit", "張", str)
+if unit_default not in ("張", "股"):
+    unit_default = "張"
+unit = st.segmented_control(
+    "交易單位", ["張", "股"], default=unit_default, required=True,
+    help="零股請選「股」，一張 = 1000 股",
 )
+is_odd_lot = unit == "股"
+qty = st.number_input(
+    "股數（零股）" if is_odd_lot else "張數",
+    min_value=1, value=max(1, qp_get("qty", 1, int)), step=1, key="qty_input",
+)
+shares = qty if is_odd_lot else qty * 1000
+st.caption(f"= {shares:,} 股")
 
 handling = st.number_input(
     "券商折數", value=qp_get("handling", 2.50, float), placeholder="2.50...(折)",
@@ -83,14 +95,14 @@ st.query_params.update(
     {
         "buy": str(buy_stock_price),
         "sell": str(sell_stock_price),
-        "num": str(num),
+        "qty": str(qty),
+        "unit": unit,
         "handling": str(handling),
         "mode": trade_mode,
     }
 )
 
 if st.button("開始計算", type="primary"):
-    shares = num * 1000
     buy = calc_buy(buy_stock_price, shares, Handling_Fee)
     sell = calc_sell(sell_stock_price, shares, Handling_Fee, IS_DAY_TRADE)
     profit = sell["net"] - buy["total"]
