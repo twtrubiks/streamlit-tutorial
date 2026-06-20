@@ -142,20 +142,22 @@ if st.button("開始計算", type="primary"):
         for p in prices
     ]
 
-    # 結果卡片: 三欄 metric, 獲利欄用 delta 自動紅綠配色 + sparkline 走勢
+    # 結果卡片: 三欄 metric; 獲利欄 delta 用 inverse 反轉成台灣慣例 (獲利紅/虧損綠) + sparkline 走勢
     c1, c2, c3 = st.columns(3)
     c1.metric("買入總成本", f"${buy['total']:,}", border=True)
     c2.metric("賣出淨收", f"${sell['net']:,}", border=True)
     c3.metric(
         "獲利", f"${profit:,}", delta=f"{profit_rate:.2%}", border=True,
+        delta_color="inverse",
         chart_data=curve["profit"], chart_type="line",
     )
 
     # 結果橫幅: 用帶 title 的 alert (1.57) 醒目呈現賺賠, 標題放金額、內文放報酬率
+    # 台灣慣例: 獲利=紅、虧損=綠; alert 框色寫死, 故獲利借用 error(紅框)、虧損借用 success(綠框)
     if profit >= 0:
-        st.success(f"報酬率 {profit_rate:+.2%}", icon="🟢", title=f"獲利 {money(profit)}")
+        st.error(f"報酬率 {profit_rate:+.2%}", icon="🔴", title=f"獲利 {money(profit)}")
     else:
-        st.error(f"報酬率 {profit_rate:+.2%}", icon="🔴", title=f"虧損 {money(profit)}")
+        st.success(f"報酬率 {profit_rate:+.2%}", icon="🟢", title=f"虧損 {money(profit)}")
 
     # 費用明細表 (st.table 在 1.55 起支援 hide_index)
     # 費用一律顯示正數金額; 只有「淨損益」會隨虧損顯示負號
@@ -174,7 +176,7 @@ if st.button("開始計算", type="primary"):
     st.caption(f"📉 損益兩平賣價約 ${break_even:,.2f}（賣到這個價格才不賠錢）")
 
     # ----- 損益視覺化 (Altair): 賺/賠上色 + Y=0 基準線 + 兩平點 + 你的賣價 -----
-    # (1)+(4) 賺錢區綠、賠錢區紅 (以 0 為基準的面積圖, 線寬 2)
+    # (1)+(4) 台灣慣例: 賺錢區紅、賠錢區綠 (以 0 為基準的面積圖, 線寬 2)
     area = (
         alt.Chart(curve)
         .transform_calculate(status="datum.profit >= 0 ? '獲利' : '虧損'")
@@ -184,16 +186,16 @@ if st.button("開始計算", type="primary"):
             y=alt.Y("profit:Q", title="獲利"),
             color=alt.Color(
                 "status:N",
-                scale=alt.Scale(domain=["獲利", "虧損"], range=["#16a34a", "#dc2626"]),
+                scale=alt.Scale(domain=["獲利", "虧損"], range=["#dc2626", "#16a34a"]),
                 legend=None,
             ),
         )
     )
 
-    # (1) Y=0 紅色虛線: 賺賠分界
+    # (1) Y=0 灰色虛線: 賺賠分界 (用中性灰, 避免與獲利紅撞色)
     zero_line = (
         alt.Chart(pd.DataFrame({"y": [0]}))
-        .mark_rule(color="#dc2626", strokeDash=[6, 4], strokeWidth=1.5)
+        .mark_rule(color="#6b7280", strokeDash=[6, 4], strokeWidth=1.5)
         .encode(y="y:Q")
     )
 
@@ -201,10 +203,10 @@ if st.button("開始計算", type="primary"):
     be = pd.DataFrame(
         {"price": [round(break_even, 2)], "profit": [0], "label": [f"兩平 ${break_even:,.2f}"]}
     )
-    be_point = alt.Chart(be).mark_point(color="#dc2626", size=90, filled=True).encode(
+    be_point = alt.Chart(be).mark_point(color="#6b7280", size=90, filled=True).encode(
         x="price:Q", y="profit:Q"
     )
-    be_text = alt.Chart(be).mark_text(dy=-12, color="#dc2626", fontWeight="bold").encode(
+    be_text = alt.Chart(be).mark_text(dy=-12, color="#6b7280", fontWeight="bold").encode(
         x="price:Q", y="profit:Q", text="label:N"
     )
 
