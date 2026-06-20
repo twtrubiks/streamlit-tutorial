@@ -1,0 +1,17 @@
+# 韭菜計算機 自訂主題
+# 重點: 不覆寫「文字顏色 textColor」與「主背景 backgroundColor」,
+# 交給 Streamlit 內建的 light / dark 自動配對, 避免深色模式下文字看不清楚。
+# 只覆寫不影響對比度的項目: 主色 / 圓角 / 字型, 卡片底色則分模式各自設定。
+[theme]
+primaryColor = "#16a34a"   # 韭菜綠 (強調色)
+baseRadius = "large"       # 圓角
+font = "sans-serif"
+
+# 淺色模式: 卡片用淺綠底, 文字維持預設深色 -> 對比清楚
+[theme.light]
+secondaryBackgroundColor = "#f0fdf4"
+
+# 深色模式: 卡片用墨綠底, 文字維持預設淺色 -> 對比清楚
+[theme.dark]
+primaryColor = "#22c55e"
+secondaryBackgroundColor = "#14241b"

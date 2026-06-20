@@ -1,5 +1,7 @@
 import streamlit as st
 
+st.set_page_config(page_title="韭菜計算機", page_icon="🌱", layout="centered")
+
 # 買賣差獲利價錢
 #
 # 如果當沖證交稅0.15%
