@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 
 st.set_page_config(page_title="韭菜計算機", page_icon="🌱", layout="centered")
@@ -24,6 +25,12 @@ def calc_sell(price_per, shares, rate, day_trade):
     tax_rate = day_trade_Certificate_Tax if day_trade else Certificate_Tax
     tax = round(gross * tax_rate)
     return {"gross": gross, "fee": fee, "tax": tax, "net": int(gross - fee - tax)}
+
+
+def money(n):
+    """金額格式化, 負數顯示為 -$xxx"""
+    return f"-${abs(n):,.0f}" if n < 0 else f"${n:,.0f}"
+
 
 st.title("韭菜計算機 :sunglasses:")
 st.subheader("手續費0.1425% 證交稅0.3% 如果當沖證交稅0.15%", divider=True)
@@ -77,3 +84,17 @@ if st.button("開始計算", type="primary"):
         icon="🟢" if profit >= 0 else "🔴",
         color="green" if profit >= 0 else "red",
     )
+
+    # 費用明細表 (st.table 在 1.55 起支援 hide_index)
+    # 費用一律顯示正數金額; 只有「淨損益」會隨虧損顯示負號
+    breakdown = pd.DataFrame(
+        [
+            {"項目": "買入成交金額", "金額": money(buy["gross"])},
+            {"項目": "買入手續費", "金額": money(buy["fee"])},
+            {"項目": "賣出成交金額", "金額": money(sell["gross"])},
+            {"項目": "賣出手續費", "金額": money(sell["fee"])},
+            {"項目": f"證交稅（{'當沖' if IS_DAY_TRADE else '非當沖'}）", "金額": money(sell["tax"])},
+            {"項目": "淨損益", "金額": money(profit)},
+        ]
+    )
+    st.table(breakdown, hide_index=True)
