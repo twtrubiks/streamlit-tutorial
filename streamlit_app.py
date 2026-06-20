@@ -33,38 +33,60 @@ def money(n):
     return f"-${abs(n):,.0f}" if n < 0 else f"${n:,.0f}"
 
 
+def qp_get(key, default, cast):
+    """從網址參數讀值 (可分享連結), 失敗則回傳預設"""
+    try:
+        return cast(st.query_params[key])
+    except (KeyError, TypeError, ValueError):
+        return default
+
+
 st.title("韭菜計算機 :sunglasses:")
 st.subheader("手續費0.1425% 證交稅0.3% 如果當沖證交稅0.15%", divider=True)
 
 buy_stock_price = st.number_input(
-    "買入價格", value=100.00, placeholder="100.00...",
+    "買入價格", value=qp_get("buy", 100.00, float), placeholder="100.00...",
     format="%.2f", step=0.01,
 )
 
 sell_stock_price = st.number_input(
-    "賣出價格", value=120.00, placeholder="120.00...",
+    "賣出價格", value=qp_get("sell", 120.00, float), placeholder="120.00...",
     format="%.2f", step=0.01,
 )
 
 num = st.number_input(
-    "張數", value=1, placeholder="1..."
+    "張數", value=qp_get("num", 1, int), placeholder="1..."
 )
 
 handling = st.number_input(
-    "券商折數", value=2.50, placeholder="2.50...(折)",
+    "券商折數", value=qp_get("handling", 2.50, float), placeholder="2.50...(折)",
     format="%.2f", step=0.01,
 )
 if handling:
     Handling_Fee = handling / 10 * 0.1425 / 100
 
+mode_default = qp_get("mode", "現股", str)
+if mode_default not in ("現股", "當沖"):
+    mode_default = "現股"
 trade_mode = st.segmented_control(
-    "交易類別", ["現股", "當沖"], default="現股", required=True,
+    "交易類別", ["現股", "當沖"], default=mode_default, required=True,
 )
 IS_DAY_TRADE = trade_mode == "當沖"
 st.badge(
     "當沖 · 證交稅減半" if IS_DAY_TRADE else "現股 · 非當沖",
     icon="⚡" if IS_DAY_TRADE else "📈",
     color="orange" if IS_DAY_TRADE else "blue",
+)
+
+# 把目前輸入同步到網址, 算完可直接複製連結分享
+st.query_params.update(
+    {
+        "buy": str(buy_stock_price),
+        "sell": str(sell_stock_price),
+        "num": str(num),
+        "handling": str(handling),
+        "mode": trade_mode,
+    }
 )
 
 if st.button("開始計算", type="primary"):
